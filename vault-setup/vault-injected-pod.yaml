@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-app-sa
+  namespace: zero-trust-apps
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vault-secret-app
+  namespace: zero-trust-apps
+  annotations:
+    vault.hashicorp.com/agent-inject: "true"
+    vault.hashicorp.com/role: "zero-trust-role"
+    vault.hashicorp.com/agent-inject-secret-db-config.txt: "secret/data/zero-trust/db-creds"
+    vault.hashicorp.com/agent-inject-template-db-config.txt: |
+      {{- with secret "secret/data/zero-trust/db-creds" -}}
+      DB_USER="{{ .Data.data.username }}"
+      DB_PASS="{{ .Data.data.password }}"
+      {{- end -}}
+spec:
+  serviceAccountName: vault-app-sa
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+  containers:
+    - name: app
+      image: busybox:latest
+      command: ["sh", "-c", "sleep 3600"]
+      securityContext:
+        runAsNonRoot: true
+        privileged: false
+        allowPrivilegeEscalation: false
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "64Mi"
+        limits:
+          cpu: "100m"
+          memory: "128Mi"
